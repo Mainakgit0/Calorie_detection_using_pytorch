@@ -9,7 +9,7 @@ import tempfile
 
 # ------------------- CONFIG ------------------- #
 # Gemini API Key
-genai.configure(api_key="AIzaSyAs9XpXyBxsKBC9ynAMN4lD6YT-5MPcAkI")  # Replace with your real key
+genai.configure(api_key="YOUR API KEY")  # Replace with your real key
 
 # Load calorie dataset
 dataset = pd.read_csv("calories.csv")
