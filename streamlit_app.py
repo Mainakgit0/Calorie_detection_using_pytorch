@@ -1,53 +1,116 @@
 import streamlit as st
-from openai import OpenAI
+import pandas as pd
+import google.generativeai as genai
+from PIL import Image
+import torch
+import torchvision.transforms as transforms
+from torchvision.models import resnet18
+import tempfile
 
-# Show title and description.
-st.title("📄 Document question answering")
-st.write(
-    "Upload a document below and ask a question about it – GPT will answer! "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-)
+# ------------------- CONFIG ------------------- #
+# Gemini API Key
+genai.configure(api_key="AIzaSyAs9XpXyBxsKBC9ynAMN4lD6YT-5MPcAkI")  # Replace with your real key
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-else:
+# Load calorie dataset
+dataset = pd.read_csv("calories.csv")
 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
+# Load class names
+def load_class_names(file_path):
+    with open(file_path, 'r') as f:
+        class_names = [line.strip() for line in f.readlines()]
+    return class_names
 
-    # Let the user upload a file via `st.file_uploader`.
-    uploaded_file = st.file_uploader(
-        "Upload a document (.txt or .md)", type=("txt", "md")
-    )
+# Preprocess image
+def preprocess_image(image_path):
+    preprocess = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    ])
+    image = Image.open(image_path).convert('RGB')
+    input_tensor = preprocess(image)
+    input_batch = input_tensor.unsqueeze(0)
+    return input_batch
 
-    # Ask the user for a question via `st.text_area`.
-    question = st.text_area(
-        "Now ask a question about the document!",
-        placeholder="Can you give me a short summary?",
-        disabled=not uploaded_file,
-    )
+# Load model
+def load_model(model_path, num_classes):
+    model = resnet18(pretrained=False)
+    model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
+    state_dict = torch.load(model_path, map_location=torch.device('cpu'))
 
-    if uploaded_file and question:
+    # Handle possible key mismatches
+    if any(k.startswith('model.') for k in model.state_dict().keys()) and not any(k.startswith('model.') for k in state_dict.keys()):
+        new_state_dict = {f"model.{k}": v for k, v in state_dict.items()}
+        model.load_state_dict(new_state_dict, strict=False)
+    elif not any(k.startswith('model.') for k in model.state_dict().keys()) and any(k.startswith('model.') for k in state_dict.keys()):
+        new_state_dict = {k.replace('model.', ''): v for k, v in state_dict.items()}
+        model.load_state_dict(new_state_dict, strict=False)
+    else:
+        model.load_state_dict(state_dict, strict=False)
 
-        # Process the uploaded file and question.
-        document = uploaded_file.read().decode()
-        messages = [
-            {
-                "role": "user",
-                "content": f"Here's a document: {document} \n\n---\n\n {question}",
-            }
-        ]
+    model.eval()
+    return model
 
-        # Generate an answer using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            stream=True,
-        )
+# Predict class
+def predict_image(model, image_tensor, class_names):
+    with torch.no_grad():
+        outputs = model(image_tensor)
+        probs = torch.nn.functional.softmax(outputs, dim=1)[0]
+        top_prob, top_idx = torch.topk(probs, 1)
+        class_name = class_names[top_idx.item()]
+        probability = f"{top_prob.item() * 100:.2f}%"
+        return class_name, probability
 
-        # Stream the response to the app using `st.write_stream`.
-        st.write_stream(stream)
+# ------------------- STREAMLIT UI ------------------- #
+st.set_page_config(page_title="Food Calorie Chat", layout="centered")
+st.title("🍽️ AI Food Calorie Estimator + Gemini Chat")
+
+# File upload
+uploaded_file = st.file_uploader("Upload a food image", type=["jpg", "jpeg", "png"])
+
+# Load class names and model
+class_names = load_class_names("classes.txt")
+model = load_model("resnet152_food21_best.pt", num_classes=len(class_names))
+
+detected_food = None
+probability = None
+
+if uploaded_file:
+    with tempfile.NamedTemporaryFile(delete=False) as temp:
+        temp.write(uploaded_file.read())
+        temp_path = temp.name
+
+    image = Image.open(temp_path)
+    st.image(image, caption="Uploaded Image", use_column_width=True)
+
+    # Predict
+    input_tensor = preprocess_image(temp_path)
+    class_name, probability = predict_image(model, input_tensor, class_names)
+    detected_food = class_name
+
+    st.success(f"🍴 Detected food: **{class_name}** ({probability} confidence)")
+
+    # Calorie lookup
+    match = dataset[dataset['Name'].str.lower() == class_name.lower()]
+    if not match.empty:
+        calories = match.iloc[0]['Calories']
+        st.info(f"🔥 Estimated Calories: **{calories} kcal**")
+    else:
+        st.warning("❗ Food not found in calorie dataset.")
+
+# ------------------- GEMINI CHAT ------------------- #
+st.markdown("---")
+st.subheader("💬 Ask Gemini Anything About the Food")
+
+user_prompt = st.text_input("Ask a question about the food:")
+
+if user_prompt:
+    chat_model = genai.GenerativeModel('gemini-2.5-pro-exp-03-25')
+    with st.spinner("Gemini is thinking..."):
+        prompt = f"Here's a food item: {detected_food}. User asked: {user_prompt}"
+        response = chat_model.generate_content(prompt)
+        st.write(response.text)
+
+
