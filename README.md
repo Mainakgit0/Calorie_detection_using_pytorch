@@ -1,97 +1,66 @@
-🍽️ AI Food Calorie Estimator & Chat App
-This Streamlit app allows users to:
+# 🍽️ AI Food Calorie Estimator & Chat App
 
-Upload a food image and get the predicted food name and estimated calories.
+A powerful AI-based Streamlit web app that allows users to upload food images, receive calorie estimations based on image classification, and chat with Google Gemini about any food-related questions!
 
-Chat with Google Gemini AI to ask anything about the food (e.g., nutrition, preparation, culture).
+---
 
-Uses a PyTorch ResNet18 model for image classification.
+## 🚀 Features
 
-Relies on a custom dataset of 100+ food items with calorie info.
+- 📸 **Food Image Recognition** – Upload an image, and get the predicted food name using a PyTorch model.
+- 🔥 **Calorie Estimation** – Matches prediction with a dataset of 100+ foods to provide estimated calories.
+- 💬 **Gemini AI Chat** – Ask questions about the food, ingredients, recipes, health info, and more!
+- 🖥️ **Streamlit Interface** – Clean and interactive web UI, easy to use even without technical background.
 
-🚀 Features
-📷 Food Recognition: Upload an image, and the model classifies the dish.
+---
 
-🔥 Calorie Estimation: Matches predicted food with a calorie dataset.
+## 🧠 Tech Stack
 
-💬 AI Chat: Ask food-related questions with Google Gemini integration.
+| Tool       | Purpose                                  |
+|------------|------------------------------------------|
+| **PyTorch**| Food image classification with ResNet18  |
+| **Streamlit** | Interactive web interface              |
+| **Google Gemini API** | Food-related conversational AI |
+| **Pandas**  | Handling and searching food-calorie data|
+| **PIL**     | Image preprocessing                     |
 
-✅ Built with Streamlit, PyTorch, Gemini API, and Pandas.
+---
 
-🧠 Tech Stack
+## 📁 Project Structure
 
-Tool	Usage
-Streamlit	Web UI
-PyTorch	ResNet18 for food classification
-Pandas	Calorie dataset handling
-Gemini API	Food-related chat functionality
-PIL/Image	Image preprocessing
-📁 Project Structure
-bash
-Copy
-Edit
-📦 food-ai-app/
-├── app.py                  # Main Streamlit app
-├── calories.csv            # Dataset with food names and calories
-├── classes.txt             # List of class names used by model
-├── resnet152_food21_best.pt # Trained PyTorch model
-├── README.md               # You're reading this!
-📦 Setup Instructions
-Clone the repo
+food-ai-app/
+├── app.py                     # Main Streamlit application script
+├── calories.csv               # CSV file containing food names and calorie values
+├── classes.txt                # Text file containing class names for the model
+├── resnet152_food21_best.pt   # Trained PyTorch model (ResNet-based)
+├── requirements.txt           # Python dependencies
+├── README.md                  # Project documentation (this file)
+└── images/                    # (Optional) Folder for storing test/sample images
 
-bash
-Copy
-Edit
-git clone https://github.com/yourusername/food-ai-app.git
-cd food-ai-app
-Install dependencies
+## Install Dependencies
 
-Make sure you're in a GitHub Codespace or a virtual environment, then:
-
-bash
-Copy
-Edit
 pip install -r requirements.txt
-Or install manually:
 
-bash
-Copy
-Edit
-pip install streamlit torch torchvision pillow pandas google-generativeai
-Set up Google Gemini API
 
-Sign up and get your API key from Google AI Studio, then:
 
-python
-Copy
-Edit
-# In your app.py
+## Configure Google Gemini API
+Get your Gemini API key from Google AI Studio, then paste it in your app.py:
 genai.configure(api_key="YOUR_API_KEY")
-▶️ Run the App
-bash
-Copy
-Edit
-streamlit run app.py
-Then go to http://localhost:8501 (or Codespace preview).
 
-📌 Notes
-Your model should output food labels that match the calories.csv names (e.g., apple_pie, cheesecake, etc.).
+## 📌 How It Works
+Image Upload: User uploads an image.
 
-If the prediction doesn't match any known food name, calorie estimation will be skipped with a warning.
+Image Preprocessing: The image is transformed using PyTorch's transforms.
 
-Make sure classes.txt and resnet152_food21_best.pt are in the root directory.
+Prediction: The ResNet18 model predicts the food label.
 
-🔮 Example Prompt for Gemini
-"How healthy is bibimbap?"
+Calorie Match: The label is searched in calories.csv for the estimated calorie.
 
-"What's the difference between ramen and pho?"
+Chat: User can ask Gemini AI anything about the food.
 
-🧠 Credits
-Model: Fine-tuned ResNet18
+## 👨‍💻Author
+Developed by Mainak Roy
 
-Dataset: Manually curated calorie data for 101 food items
+## 📜Licence
+This project is licensed under the MIT License. Feel free to use, modify, and share it!
 
-AI Chat: Google Gemini API
 
-📜 License
-MIT License. Do whatever you want with it, just give a shout-out if it's useful! 😊
